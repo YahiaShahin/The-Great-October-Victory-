@@ -1,0 +1,91 @@
+/* The Great October Victory — retro arcade styling.
+   All game graphics live on a 320x180 canvas that is scaled up with
+   hard pixel edges; this file adds the CRT monitor look around it. */
+
+:root {
+  /* largest 16:9 box that fits the window */
+  --w: min(100vw, 177.7778vh);
+  --h: calc(var(--w) * 9 / 16);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #05050a;
+  overflow: hidden;
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+#screen {
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  background: #000;
+  overflow: hidden;
+  border-radius: calc(var(--w) * 0.012);
+  box-shadow: 0 0 calc(var(--w) * 0.04) rgba(80, 160, 255, 0.22);
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;   /* the important one */
+}
+
+.crt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* scanlines: one dark row for every second source pixel row */
+.scan {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.22) 50%);
+  background-size: 100% calc(var(--h) / 90);
+}
+
+/* curved-glass darkening toward the corners */
+.vignette {
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* very slight, slow brightness flicker (low amplitude, not a strobe) */
+.flicker {
+  background: #9fc8ff;
+  opacity: 0;
+  animation: flick 7s infinite;
+}
+
+@keyframes flick {
+  0%, 100% { opacity: 0; }
+  4%       { opacity: 0.03; }
+  5%       { opacity: 0; }
+  41%      { opacity: 0; }
+  42%      { opacity: 0.045; }
+  44%      { opacity: 0; }
+  71%      { opacity: 0.025; }
+  72%      { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flicker { animation: none; }
+}
+
+noscript {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffd23f;
+  font: 16px monospace;
+}
