@@ -8,31 +8,37 @@
 'use strict';
 
 /* ============================================================
-   ENEMY CHATTER — edit this list to add your own lines!
+   ALIEN PILOT CHATTER — edit this list to add your own lines!
    Just add more strings. The pixel font supports:
    A-Z, 0-9 and  : $ - + ! . , / % ? > < ' * = ( ) |
    (anything else shows up as a "?"). Keep lines under ~30 characters
-   so the bubble fits on screen. In the editor you can also give any
-   single enemy its own lines; these are the defaults.
+   so the bubble fits on screen.
    ============================================================ */
 const SPEECH_LINES = [
-  'KHAMASS!!',
-  'WHERE IS MY MOOONEYYY!',
-  'ANTI_SEMETIC',
-  'WE ARE BETTER THAN YOU',
-  'WE RUINED YOUR WORLD HAHA'
+  'KHAMAS!!',
+  'YOU ARE ANTISEMENTIC',
+  'WHERE IS MY MONEY?!',
+  'KHAMAS!!',
+  'KHAMAS!!',
+  'KHAMAS!!',
+  'KHAMAS!!',
+  'KHAMAS!!',
+  'ITS A NEW HOLOCOST!'
 ];
 const TALK_MIN = 4;        // seconds between lines (min) for each enemy
 const TALK_MAX = 9;        // seconds between lines (max)
 const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
+
+/* ALIEN LOOK — make the nose and hat as silly as you like.
+   0 = the original size; each +1 adds one more pixel. */
+const PILOT_NOSE = 3;      // extra nose length (pixels, points left)
+const PILOT_HAT = 3;       // extra hat height (pixels, stovepipe style)
 
 (() => {
   /* ---------------------------------------------------------
      Setup & helpers
   --------------------------------------------------------- */
   const W = 320, H = 180, HUD_H = 14, HORIZON = H - 30;
-  const OCT = window.OCT;
-  if (!OCT || !OCT.ENEMIES) throw new Error('creatures.js and content.js must be loaded before game.js');
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d', { alpha: false });
   ctx.imageSmoothingEnabled = false;
@@ -246,6 +252,24 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
   SPR.interceptor = [interceptorArt()];
   SPR.bomber = [bomberArt()];
   SPR.carrier = [carrierArt(0), carrierArt(1)];
+
+  /* ---- Silly alien pilot (11x12): antennae, big eyes, long nose, black hat, diaper ---- */
+  SPR.pilot = makeSprite(11 + PILOT_NOSE, 12 + PILOT_HAT, (r0) => {
+    const G = '#f3e595', GD = '#e4c954', PINK = '#ff4fd8', HAT = '#111111';
+    const o = PILOT_NOSE, t = PILOT_HAT;
+    const r = (x, y, w, h, c) => r0(x + o, y + t, w, h, c);   // shifted so the long nose and tall hat have room
+    r0(2 + o, 0, 1, 3 + t, G); r0(8 + o, 0, 1, 3 + t, G);     // antennae (grow with the hat)
+    r0(2 + o, 0, 1, 1, PINK); r0(8 + o, 0, 1, 1, PINK);
+    r0(3 + o, 1, 5, 2 + t, HAT); r(1, 3, 9, 1, HAT);          // black hat: tall crown + brim
+    r(2, 4, 7, 5, G); r(2, 8, 7, 1, GD);                      // head
+    r0(0, 6 + t, 3 + o, 2, G); r0(0, 6 + t, 1, 2, GD);        // long nose (points left)
+    r(3, 5, 2, 2, '#111111'); r(6, 5, 2, 2, '#111111');                             // big eyes
+    r(3, 5, 1, 1, '#ffffff'); r(6, 5, 1, 1, '#ffffff');
+    r(4, 8, 3, 1, '#1a5a30');                                                       // goofy mouth
+    r(3, 9, 5, 1, G);                                                               // tiny body
+    r(2, 10, 7, 2, '#ffffff'); r(2, 11, 7, 1, '#d8d8e8'); r(5, 10, 1, 1, GOLD);     // diaper + pin
+  });
+  const PILOT_FLASH = tint(SPR.pilot, '#ffffff');
 
   /* ---- Bosses ---- */
   function bossHawk() {
@@ -545,8 +569,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
     },
   };
 
-  Object.assign(PAL, OCT.PAL_EXTRA);                      // dawn, space, ocean, ice, jungle, ruins, hive ...
-
   const CLOUDS = [
     [[4, 4, 24, 5], [8, 1, 10, 5], [16, 0, 8, 6]],
     [[2, 3, 20, 4], [6, 0, 10, 4]],
@@ -569,38 +591,8 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       for (let i = 0; i < 46; i++) this.rain.push({ x: rand(0, W), y: rand(0, H), v: rand(160, 240) });
       this.embers = [];
       for (let i = 0; i < 30; i++) this.embers.push({ x: rand(0, W), y: rand(0, H), v: rand(10, 36), p: rand(0, 6) });
-      this.deep = [];                                          // far-away stars for the space scenes
-      for (let i = 0; i < 110; i++) this.deep.push({ x: rand(0, W + 40), y: rand(2, H - 12), k: [0.04, 0.1, 0.22][i % 3], p: rand(0, 6) });
-      this.snow = [];
-      for (let i = 0; i < 70; i++) this.snow.push({ x: rand(0, W), y: rand(0, H), v: rand(14, 34), p: rand(0, 6) });
-      this.nebula = [];
-      for (let c = 0; c < 5; c++) {
-        const r = [];
-        for (let j = 0; j < 34; j++) r.push([randi(-34, 34), randi(-14, 14), randi(6, 16), randi(3, 7)]);
-        this.nebula.push({ x: rand(0, W + 200), y: rand(24, 140), r });
-      }
-      this.cityFar = this.makeCity(60, 12, 24, 22, 70);
-      this.cityNear = this.makeCity(46, 16, 30, 30, 96);
       this.sky = {};
       for (const m of Object.keys(PAL)) this.sky[m] = this.bakeSky(m);
-    }
-
-    makeCity(n, wmin, wmax, hmin, hmax) {
-      const list = []; let x = 0;
-      for (let i = 0; i < n; i++) {
-        const w = randi(wmin, wmax), h = randi(hmin, hmax);
-        const jag = []; for (let k = 0; k < Math.ceil(w / 3); k++) jag.push(randi(0, 4));
-        list.push({ x, w, h, jag, seed: rand(0, 99), tw: Math.random() < 0.4 ? Math.floor(w * 0.5) : 0, th: randi(4, 14), to: randi(0, 3) });
-        x += w + randi(0, 5);
-      }
-      list.len = x;
-      return list;
-    }
-
-    mix(a, b, t) {
-      const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-      const f = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
-      return '#' + ((1 << 24) | (f(16) << 16) | (f(8) << 8) | f(0)).toString(16).slice(1);
     }
 
     bakeSky(mode) {
@@ -609,7 +601,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       const g = c.getContext('2d');
       const bh = Math.ceil((H - 20) / pal.sky.length);
       pal.sky.forEach((col, i) => { g.fillStyle = col; g.fillRect(0, i * bh, W, bh + 1); });
-      g.fillStyle = pal.sky[pal.sky.length - 1]; g.fillRect(0, pal.sky.length * bh, W, H);   // cover the bottom too (space scenes have no ground)
       for (let i = 1; i < pal.sky.length; i++) {            // 2-row dither between bands
         const y = i * bh;
         for (let x = 0; x < W; x += 2) {
@@ -656,11 +647,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       }
       for (const r of this.rain) { r.y += r.v * dt; r.x -= 40 * dt; if (r.y > H) { r.y = -4; r.x = rand(0, W + 40); } }
       for (const e of this.embers) { e.y -= e.v * dt; e.x -= (speed * 0.5) * dt; if (e.y < -2 || e.x < -2) { e.y = H + 2; e.x = rand(0, W); } }
-      for (const f of this.snow) {
-        f.y += f.v * dt; f.x += (-speed * 0.25 + Math.sin(this.t * 1.5 + f.p) * 8) * dt;
-        if (f.y > H) { f.y = -2; f.x = rand(0, W + 30); }
-        if (f.x < -2) f.x = W + 2;
-      }
     }
 
     desertTop(x, k, base, a1, a2) {
@@ -669,11 +655,10 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
     }
 
     draw() {
-      const pal = PAL[this.mode], scene = pal.scene || 'desert';
-      const open = scene !== 'space' && scene !== 'hive';       // scenes with an ordinary sky
+      const pal = PAL[this.mode];
       ctx.drawImage(this.sky[this.mode], 0, 0);
 
-      if (pal.stars && scene !== 'space') {
+      if (pal.stars) {
         for (const s of this.stars) {
           const b = Math.sin(this.t * 2 + s.p);
           ctx.fillStyle = b > 0.4 ? '#ffffff' : b > -0.4 ? '#9fb0ff' : '#4a4f8a';
@@ -681,63 +666,29 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
         }
       }
 
-      if (open) {
-        ctx.globalAlpha = 0.55; ctx.fillStyle = pal.craft || '#000';       // distant aircraft silhouettes
-        for (const a of this.craft) {
-          const x = Math.round(a.x), y = Math.round(a.y), d = a.v > 0 ? 1 : -1;
-          ctx.fillRect(x, y + 1, 10, 1);
-          ctx.fillRect(d > 0 ? x : x + 8, y, 2, 1);
-          ctx.fillRect(x + 4, y + 2, 3, 1);
-          ctx.globalAlpha = 0.25; ctx.fillStyle = '#ffffff';
-          ctx.fillRect(d > 0 ? x - 14 : x + 11, y + 1, 14, 1);
-          ctx.globalAlpha = 0.55; ctx.fillStyle = pal.craft || '#000';
-        }
-        ctx.globalAlpha = 1;
-
-        for (const c of this.clouds) {
-          const shape = CLOUDS[c.s], ox = Math.round(c.x), oy = Math.round(c.y);
-          ctx.globalAlpha = c.l ? 1 : 0.7;
-          ctx.fillStyle = pal.cloud;
-          for (const [x, y, w, h] of shape) ctx.fillRect(ox + x, oy + y, w, h);
-          ctx.fillStyle = pal.cloudShade;
-          const base = shape[0];
-          ctx.fillRect(ox + base[0], oy + base[1] + base[3] - 1, base[2], 1);
-        }
-        ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.55; ctx.fillStyle = pal.craft;       // distant aircraft silhouettes
+      for (const a of this.craft) {
+        const x = Math.round(a.x), y = Math.round(a.y), d = a.v > 0 ? 1 : -1;
+        ctx.fillRect(x, y + 1, 10, 1);
+        ctx.fillRect(d > 0 ? x : x + 8, y, 2, 1);
+        ctx.fillRect(x + 4, y + 2, 3, 1);
+        ctx.globalAlpha = 0.25; ctx.fillStyle = '#ffffff';
+        ctx.fillRect(d > 0 ? x - 14 : x + 11, y + 1, 14, 1);
+        ctx.globalAlpha = 0.55; ctx.fillStyle = pal.craft;
       }
+      ctx.globalAlpha = 1;
 
-      if (scene === 'desert') this.scene_desert(pal);
-      else if (this['scene_' + scene]) this['scene_' + scene](pal);
-
-      ctx.fillStyle = pal.streak;                              // wind streaks
-      for (const s of this.streaks) ctx.fillRect(Math.round(s.x), Math.round(s.y), s.len, 1);
-
-      if (pal.rain) {
-        ctx.fillStyle = 'rgba(190,210,240,0.55)';
-        for (const r of this.rain) { const x = Math.round(r.x), y = Math.round(r.y); ctx.fillRect(x, y, 1, 2); ctx.fillRect(x - 1, y + 2, 1, 2); }
+      for (const c of this.clouds) {
+        const shape = CLOUDS[c.s], ox = Math.round(c.x), oy = Math.round(c.y);
+        ctx.globalAlpha = c.l ? 1 : 0.7;
+        ctx.fillStyle = pal.cloud;
+        for (const [x, y, w, h] of shape) ctx.fillRect(ox + x, oy + y, w, h);
+        ctx.fillStyle = pal.cloudShade;
+        const base = shape[0];
+        ctx.fillRect(ox + base[0], oy + base[1] + base[3] - 1, base[2], 1);
       }
-      if (pal.embers) {
-        for (const e of this.embers) {
-          ctx.fillStyle = Math.sin(this.t * 6 + e.p) > 0 ? '#ffb347' : '#ff5a1a';
-          ctx.fillRect(Math.round(e.x), Math.round(e.y), 1, 1);
-        }
-      }
-      if (pal.fx === 'snow') {
-        ctx.fillStyle = '#ffffff';
-        for (const f of this.snow) ctx.fillRect(Math.round(f.x), Math.round(f.y), f.v > 26 ? 2 : 1, f.v > 26 ? 2 : 1);
-      } else if (pal.fx === 'spores') {
-        for (const e of this.embers) {
-          ctx.fillStyle = Math.sin(this.t * 3 + e.p) > 0 ? (pal.glow || '#d8ff7a') : this.mix(pal.glow || '#d8ff7a', '#000000', 0.5);
-          ctx.fillRect(Math.round(e.x), Math.round(e.y), 1, 1);
-        }
-      } else if (pal.fx === 'smoke') {
-        ctx.fillStyle = 'rgba(20,16,22,0.32)';
-        for (const e of this.embers) ctx.fillRect(Math.round(e.x), Math.round(e.y), 3, 3);
-      }
-    }
+      ctx.globalAlpha = 1;
 
-    /* ----- scenes: each draws its own ground / backdrop ----- */
-    scene_desert(pal) {
       ctx.fillStyle = pal.far;                                 // far dunes
       for (let x = 0; x < W; x++) {
         const top = this.desertTop(x, 0.2, HORIZON, 5, 2);
@@ -782,162 +733,18 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
         ctx.fillRect(tx, ty - 2, 1, 2); ctx.fillRect(tx - 1, ty - 1, 3, 1);
       }
 
-    }
+      ctx.fillStyle = pal.streak;                              // wind streaks
+      for (const s of this.streaks) ctx.fillRect(Math.round(s.x), Math.round(s.y), s.len, 1);
 
-    scene_space(pal) {
-      for (const s of this.deep) {                             // 3 parallax star layers
-        const x = Math.floor(mod(s.x - this.scroll * s.k, W + 40)) - 10, b = Math.sin(this.t * 2 + s.p);
-        ctx.fillStyle = s.k > 0.2 ? '#ffffff' : s.k > 0.08 ? (b > 0 ? '#cfd8ff' : '#9fb0ff') : (b > 0.3 ? '#8b95d9' : '#4a4f8a');
-        ctx.fillRect(x, Math.floor(s.y), s.k > 0.2 ? 2 : 1, 1);
+      if (pal.rain) {
+        ctx.fillStyle = 'rgba(190,210,240,0.55)';
+        for (const r of this.rain) { const x = Math.round(r.x), y = Math.round(r.y); ctx.fillRect(x, y, 1, 2); ctx.fillRect(x - 1, y + 2, 1, 2); }
       }
-      ctx.fillStyle = pal.neb;                                 // nebula clouds
-      ctx.globalAlpha = 0.09;
-      for (const n of this.nebula) {
-        const ox = mod(n.x - this.scroll * 0.05, W + 200) - 100;
-        for (const [dx, dy, w, h] of n.r) ctx.fillRect(Math.round(ox + dx), Math.round(n.y + dy), w, h);
-      }
-      ctx.globalAlpha = 1;
-      const [c0, c1, c2] = pal.planet, R = 30, px = Math.round(mod(250 - this.scroll * 0.03, W + 140)) - 20, py = 64;
-      const ring = (front) => {
-        for (let a = 0; a < 6.283; a += 0.02) {
-          const sa = Math.sin(a);
-          if ((sa > 0) !== front) continue;
-          for (const rr of [1.62, 1.72]) {
-            ctx.fillStyle = front ? c2 : c1;
-            ctx.fillRect(Math.round(px + Math.cos(a) * R * rr), Math.round(py + sa * R * 0.3 - Math.cos(a) * 6), 1, 1);
-          }
+      if (pal.embers) {
+        for (const e of this.embers) {
+          ctx.fillStyle = Math.sin(this.t * 6 + e.p) > 0 ? '#ffb347' : '#ff5a1a';
+          ctx.fillRect(Math.round(e.x), Math.round(e.y), 1, 1);
         }
-      };
-      ring(false);
-      for (let dy = -R; dy <= R; dy++) {                       // the planet
-        const w = Math.floor(Math.sqrt(R * R - dy * dy));
-        ctx.fillStyle = c0; ctx.fillRect(px - w, py + dy, w * 2, 1);
-        const sx = Math.max(px - w, Math.round(px + w * 0.15 + dy * 0.45 + 6));
-        if (sx < px + w) { ctx.fillStyle = c1; ctx.fillRect(sx, py + dy, px + w - sx, 1); }
-        if (dy % 7 === 0) { ctx.globalAlpha = 0.16; ctx.fillStyle = c2; ctx.fillRect(px - w, py + dy, w * 2, 2); ctx.globalAlpha = 1; }
-      }
-      ctx.fillStyle = c2; ctx.fillRect(px - 14, py - 17, 5, 2); ctx.fillRect(px - 17, py - 13, 3, 2);
-      ring(true);
-    }
-
-    scene_ocean(pal) {
-      const hy = HORIZON - 6;
-      for (let y = hy; y < H; y += 3) { ctx.fillStyle = this.mix(pal.far, pal.near, (y - hy) / (H - hy)); ctx.fillRect(0, y, W, 3); }
-      ctx.fillStyle = this.mix(pal.far, '#000000', 0.3);       // distant islands
-      for (const p of [{ x: 60, h: 14 }, { x: 300, h: 9 }, { x: 520, h: 18 }]) {
-        const x0 = mod(p.x - this.scroll * 0.08 + 60, 700) - 60;
-        if (x0 > W) continue;
-        for (let i = 0; i < p.h; i++) { const half = Math.floor((p.h - i) * 1.8); ctx.fillRect(Math.round(x0 + p.h * 1.8 - half), hy - i, half * 2, 1); }
-      }
-      ctx.fillStyle = pal.nearTop;                             // wave crests, nearer rows move faster
-      for (let row = 0; row < 9; row++) {
-        const y = Math.round(hy + 4 + row * 3.4 + row * row * 0.12), k = 0.25 + row * 0.13;
-        for (let x = 0; x < W; x++) {
-          const sx = x + this.scroll * k;
-          if (Math.sin(sx * 0.11 + row * 1.7) + Math.sin(sx * 0.047 + row) > 1.55) ctx.fillRect(x, y, row > 4 ? 2 : 1, 1);
-        }
-      }
-    }
-
-    scene_ice(pal) {
-      const base = HORIZON + 8, P = 560;
-      for (const p of [{ x: 30, h: 50, w: 46 }, { x: 150, h: 38, w: 38 }, { x: 260, h: 58, w: 54 }, { x: 380, h: 44, w: 42 }, { x: 480, h: 34, w: 34 }]) {
-        const x0 = mod(p.x - this.scroll * 0.06 + 60, P) - 60;
-        if (x0 > W) continue;
-        for (let i = 0; i < p.h; i++) {
-          const half = Math.floor((p.w / 2) * (i / p.h)) + 1, cap = i < p.h * 0.28;
-          ctx.fillStyle = cap ? pal.near : this.mix(pal.far, '#ffffff', 0.3); ctx.fillRect(Math.round(x0 + p.w / 2 - half), base - p.h + i, half, 1);
-          ctx.fillStyle = cap ? pal.nearTop : pal.far; ctx.fillRect(Math.round(x0 + p.w / 2), base - p.h + i, half, 1);
-        }
-      }
-      ctx.fillStyle = pal.mid;                                 // rolling snow hills
-      for (let x = 0; x < W; x++) { const top = this.desertTop(x, 0.2, HORIZON + 4, 6, 2); ctx.fillRect(x, top, 1, H - top); }
-      const nt = (x) => this.desertTop(x, 0.6, H - 20, 4, 1.5);
-      ctx.fillStyle = pal.near;
-      for (let x = 0; x < W; x++) { const top = nt(x); ctx.fillRect(x, top, 1, H - top); }
-      ctx.fillStyle = pal.nearTop;
-      for (let x = 0; x < W; x++) ctx.fillRect(x, nt(x), 1, 1);
-      const pine = this.mix(pal.far, '#10303a', 0.6);          // pine trees
-      for (let i = 0; i < 5; i++) {
-        const x = Math.round(mod(i * 97 + 20 - this.scroll * 0.6, 500) - 20), by = nt(x);
-        ctx.fillStyle = pine;
-        for (let k = 0; k < 3; k++) { const wd = 9 - k * 2, y = by - 4 - k * 5; ctx.fillRect(x - Math.floor(wd / 2), y, wd, 5); }
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, by - 15, 2, 1); ctx.fillRect(x - 3, by - 9, 6, 1);
-      }
-    }
-
-    scene_jungle(pal) {
-      ctx.fillStyle = pal.far;
-      for (let x = 0; x < W; x++) { const top = this.desertTop(x, 0.1, HORIZON - 14, 9, 3); ctx.fillRect(x, top, 1, H - top); }
-      ctx.fillStyle = pal.mid;                                 // canopy
-      for (let x = 0; x < W; x++) {
-        const sx = x + this.scroll * 0.28;
-        const top = Math.round(HORIZON - 2 - Math.abs(Math.sin(sx * 0.07)) * 12 - Math.abs(Math.sin(sx * 0.19 + 2)) * 5);
-        ctx.fillRect(x, top, 1, H - top);
-      }
-      ctx.fillStyle = this.mix(pal.mid, '#000000', 0.45);      // trunks
-      for (let i = 0; i < 9; i++) ctx.fillRect(Math.round(mod(i * 47 - this.scroll * 0.28, 430) - 20), HORIZON + 2, 2, H - HORIZON);
-      const nt = (x) => this.desertTop(x, 0.6, H - 22, 5, 2);
-      ctx.fillStyle = pal.near;
-      for (let x = 0; x < W; x++) { const top = nt(x); ctx.fillRect(x, top, 1, H - top); }
-      ctx.fillStyle = pal.nearTop;
-      for (let x = 0; x < W; x++) ctx.fillRect(x, nt(x), 1, 1);
-      for (let i = 0; i < 8; i++) {                            // fern tufts
-        const x = Math.round(mod(i * 61 - this.scroll * 0.6, 500) - 10), by = nt(x);
-        for (let d = -4; d <= 4; d++) { const h = 5 - Math.abs(d); ctx.fillRect(x + d, by - h, 1, h); }
-      }
-    }
-
-    scene_ruins(pal) {
-      const layer = (arr, k, col, base, windows) => {
-        const off = mod(this.scroll * k, arr.len);
-        for (const b of arr) {
-          for (const shift of [0, arr.len]) {
-            const x = Math.round(b.x - off + shift);
-            if (x > W || x < -b.w - 4) continue;
-            const top = base - b.h;
-            ctx.fillStyle = col; ctx.fillRect(x, top, b.w, b.h + 4);
-            if (b.tw) ctx.fillRect(x + b.to, top - b.th, b.tw, b.th);
-            for (let i = 0; i < b.jag.length; i++) ctx.fillRect(x + i * 3, top - b.jag[i], 3, b.jag[i]);   // broken tops
-            if (windows) {
-              for (let cy = 0; cy < Math.floor(b.h / 7); cy++) {
-                for (let cx = 0; cx < Math.floor((b.w - 2) / 5); cx++) {
-                  const h = Math.abs(Math.sin(b.seed * 12.9 + cx * 7.7 + cy * 13.3) * 43758.5) % 1;
-                  if (h > 0.74 && (h < 0.97 || Math.sin(this.t * 3 + b.seed) > 0)) { ctx.fillStyle = pal.win; ctx.fillRect(x + 2 + cx * 5, top + 4 + cy * 7, 2, 3); }
-                }
-              }
-            }
-          }
-        }
-      };
-      layer(this.cityFar, 0.1, pal.far, HORIZON + 6, false);
-      layer(this.cityNear, 0.28, this.mix(pal.far, pal.near, 0.55), HORIZON + 18, true);
-      const nt = (x) => this.desertTop(x, 0.6, H - 18, 3, 3);
-      ctx.fillStyle = pal.near;
-      for (let x = 0; x < W; x++) { const top = nt(x); ctx.fillRect(x, top, 1, H - top); }
-      ctx.fillStyle = pal.nearTop;
-      for (let x = 0; x < W; x++) ctx.fillRect(x, nt(x), 1, 1);
-    }
-
-    scene_hive(pal) {
-      const ceil = (x, k) => { const sx = x + this.scroll * k; return Math.round(10 + Math.sin(sx * 0.03) * 9 + Math.sin(sx * 0.09 + 1) * 5 + Math.sin(sx * 0.2) * 2); };
-      const flr = (x, k) => { const sx = x + this.scroll * k; return Math.round(H - 26 - Math.sin(sx * 0.025 + 2) * 9 - Math.sin(sx * 0.08) * 5 - Math.sin(sx * 0.17 + 3) * 2); };
-      ctx.fillStyle = pal.far;
-      for (let x = 0; x < W; x++) { ctx.fillRect(x, 0, 1, ceil(x, 0.18) - 6); const f = flr(x, 0.18) + 8; ctx.fillRect(x, f, 1, H - f); }
-      for (let x = 0; x < W; x++) {
-        const c = ceil(x, 0.5), f = flr(x, 0.5);
-        ctx.fillStyle = pal.near; ctx.fillRect(x, 0, 1, c); ctx.fillRect(x, f, 1, H - f);
-        ctx.fillStyle = pal.nearTop; ctx.fillRect(x, c, 1, 1); ctx.fillRect(x, f, 1, 1);
-      }
-      for (let i = 0; i < 7; i++) {                            // glowing egg-pods on the floor
-        const x = Math.round(mod(i * 53 - this.scroll * 0.5, 380) - 10), y = flr(x, 0.5) - 3 - (i % 3), on = Math.sin(this.t * 2 + i) > -0.2;
-        ctx.fillStyle = on ? pal.glow : pal.nearTop; ctx.fillRect(x, y, 3, 3);
-        if (on) { ctx.globalAlpha = 0.25; ctx.fillRect(x - 2, y - 2, 7, 7); ctx.globalAlpha = 1; }
-      }
-      for (let i = 0; i < 6; i++) {                            // dripping stalactites
-        const x = Math.round(mod(i * 71 + 10 - this.scroll * 0.5, 430) - 10), y = ceil(x, 0.5), len = 4 + (i % 3) * 2;
-        ctx.fillStyle = pal.nearTop; ctx.fillRect(x, y, 2, len);
-        ctx.fillStyle = pal.glow; ctx.fillRect(x, y + len, 2, 1);
       }
     }
   }
@@ -948,20 +755,8 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
   const SAVE_KEY = 'oct73_save_v2';
   const defaultSave = () => ({
     coins: 0, gems: 0, up: {}, weapons: ['vulcan'], weapon: 'vulcan',
-    skins: ['std'], skin: 'std', hi: 0, bestStage: 1, stage: 1, diff: 1, storyIdx: 0,
+    skins: ['std'], skin: 'std', hi: 0, bestStage: 1, stage: 1, diff: 1,
   });
-
-  /* ---- the story (built in editor.html) ----
-     Order of preference: the editor's working copy in localStorage (so your edits show up
-     instantly when both pages share an address), then campaign.js (what you publish). */
-  const CAMPAIGN_KEY = 'oct_campaign_v1';
-  function loadCampaign() {
-    let c = null;
-    try { c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY)); } catch (e) { /* ignore */ }
-    if (!c || !Array.isArray(c.chapters) || !OCT.flatten(c).length) c = window.OCT_CAMPAIGN || c;
-    if (c && c.roster) OCT.applyRoster(c.roster);
-    return c;
-  }
   function loadSave() {
     const d = defaultSave();
     try {
@@ -1458,43 +1253,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
   /* ---------------------------------------------------------
      Enemies (7 types x 3 tiers)
   --------------------------------------------------------- */
-  /* ---------------------------------------------------------
-     Speech bubbles (shared by enemies and bosses)
-  --------------------------------------------------------- */
-  function tickTalk(e, dt, g) {
-    if (e.sayT > 0) e.sayT -= dt;
-    e.talkT -= dt;
-    if (e.talkT > 0) return;
-    e.talkT = rand(TALK_MIN, TALK_MAX);
-    if (g.cstage && g.cstage.chatter === false) return;
-    const lines = e.def.lines && e.def.lines.length ? e.def.lines : SPEECH_LINES;
-    if (!lines.length) return;
-    const talking = g.enemies.filter((o) => o.sayT > 0).length;
-    if (talking < MAX_BUBBLES && e.x < W - 30 && e.x > 20) { e.say = pick(lines); e.sayT = 2.2; g.sfx.chatter(); }
-  }
-
-  function drawBubble(str, left, cx, y, h) {
-    if (left < 0.3 && Math.floor(left * 20) % 2 === 0) return;           // blink out at the end
-    const s = String(str).toUpperCase(), bw = textW(s) + 6, bh = 11;
-    cx = Math.round(cx); y = Math.round(y);
-    const bx = clamp(cx - Math.floor(bw / 2), 2, W - bw - 2);
-    let by = y - bh - 5, below = false;
-    if (by < HUD_H + 2) { by = y + h + 5; below = true; }                // no room above: go below
-    const tx = clamp(cx - 1, bx + 3, bx + bw - 6);
-    ctx.fillStyle = '#000'; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(bx, by, bw, bh);
-    if (!below) {                                                          // tail pointing down
-      ctx.fillStyle = '#000'; ctx.fillRect(tx - 1, by + bh, 5, 1); ctx.fillRect(tx, by + bh + 1, 1, 1);
-      ctx.fillRect(tx + 2, by + bh + 1, 1, 1); ctx.fillRect(tx + 1, by + bh + 2, 1, 1);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(tx, by + bh, 3, 1); ctx.fillRect(tx + 1, by + bh + 1, 1, 1);
-    } else {                                                               // tail pointing up
-      ctx.fillStyle = '#000'; ctx.fillRect(tx - 1, by - 1, 5, 1); ctx.fillRect(tx, by - 2, 1, 1);
-      ctx.fillRect(tx + 2, by - 2, 1, 1); ctx.fillRect(tx + 1, by - 3, 1, 1);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(tx, by - 1, 3, 1); ctx.fillRect(tx + 1, by - 2, 1, 1);
-    }
-    text(s, bx + 3, by + 3, '#111111', 1);
-  }
-
   class Enemy {
     constructor(type, x, y, g, opt = {}) {
       const def = ET[type];
@@ -1513,7 +1271,15 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
     }
     update(dt, g) {
       this.t += dt; this.flash = Math.max(0, this.flash - dt);
-      tickTalk(this, dt, g);
+      if (this.sayT > 0) this.sayT -= dt;
+      this.talkT -= dt;
+      if (this.talkT <= 0) {
+        this.talkT = rand(TALK_MIN, TALK_MAX);
+        const talking = g.enemies.filter((o) => o.sayT > 0).length;
+        if (SPEECH_LINES.length && talking < MAX_BUBBLES && this.x < W - 30 && this.x > 20) {
+          this.say = pick(SPEECH_LINES); this.sayT = 2.2; g.sfx.chatter();
+        }
+      }
       const sp = this.def.speed * g.speedMul, tier = this.tier, rate = g.diff.rate;
       const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
       switch (this.type) {
@@ -1622,15 +1388,36 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
         for (let lx = 0; lx < x; lx += 4) ctx.fillRect(lx, ly, 2, 1);
       }
       ctx.drawImage(img, x, y);
+      // alien pilot perched on top of the jet, wobbling a little
+      const px = x + Math.floor(this.w / 2) - (5 + PILOT_NOSE), py = y - (8 + PILOT_HAT) + Math.round(Math.sin(this.t * 9 + this.phase));
+      ctx.drawImage(this.flash > 0 ? PILOT_FLASH : SPR.pilot, px, py);
       if ((this.tier >= 2 || this.def.big) && this.hp < this.maxhp) {
-        ctx.fillStyle = '#000'; ctx.fillRect(x, y - 4, this.w, 3);
+        ctx.fillStyle = '#000'; ctx.fillRect(x, y - 12 - PILOT_HAT, this.w, 3);
         ctx.fillStyle = this.tier >= 3 ? '#ff4b4b' : this.tier === 2 ? GOLD : '#6dff9a';
-        ctx.fillRect(x + 1, y - 3, Math.max(0, Math.round((this.w - 2) * this.hp / this.maxhp)), 1);
+        ctx.fillRect(x + 1, y - 11 - PILOT_HAT, Math.max(0, Math.round((this.w - 2) * this.hp / this.maxhp)), 1);
       }
     }
     drawSpeech() {
       if (!this.say || this.sayT <= 0 || this.dead) return;
-      drawBubble(this.say, this.sayT, this.x + this.w / 2, this.y, this.h);
+      if (this.sayT < 0.3 && Math.floor(this.sayT * 20) % 2 === 0) return;
+      const s = this.say.toUpperCase(), bw = textW(s) + 6, bh = 11;
+      const cx = Math.round(this.x + this.w / 2), y = Math.round(this.y);
+      const bx = clamp(cx - Math.floor(bw / 2), 2, W - bw - 2);
+      let by = y - 8 - PILOT_HAT - bh - 5, below = false;
+      if (by < HUD_H + 2) { by = y + this.h + 5; below = true; }           // no room above: go below
+      const tx = clamp(cx - 1, bx + 3, bx + bw - 6);
+      ctx.fillStyle = '#000'; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(bx, by, bw, bh);
+      if (!below) {                                                          // tail pointing down
+        ctx.fillStyle = '#000'; ctx.fillRect(tx - 1, by + bh, 5, 1); ctx.fillRect(tx, by + bh + 1, 1, 1);
+        ctx.fillRect(tx + 2, by + bh + 1, 1, 1); ctx.fillRect(tx + 1, by + bh + 2, 1, 1);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(tx, by + bh, 3, 1); ctx.fillRect(tx + 1, by + bh + 1, 1, 1);
+      } else {                                                               // tail pointing up
+        ctx.fillStyle = '#000'; ctx.fillRect(tx - 1, by - 1, 5, 1); ctx.fillRect(tx, by - 2, 1, 1);
+        ctx.fillRect(tx + 2, by - 2, 1, 1); ctx.fillRect(tx + 1, by - 3, 1, 1);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(tx, by - 1, 3, 1); ctx.fillRect(tx + 1, by - 2, 1, 1);
+      }
+      text(s, bx + 3, by + 3, '#111111', 1);
     }
   }
 
@@ -1740,197 +1527,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
   }
 
   /* ---------------------------------------------------------
-     Custom aliens and bosses (built from the content library)
-  --------------------------------------------------------- */
-  const CREATURES = new Map();
-  function creatureFrames(spec) {
-    const k = JSON.stringify(spec);
-    let f = CREATURES.get(k);
-    if (!f) { f = [0, 1].map((i) => OCT.toCanvas(OCT.render(spec, i), 1)); CREATURES.set(k, f); }
-    return f;
-  }
-  const triWave = (x) => Math.asin(Math.sin(x)) / (Math.PI / 2);
-
-  class AlienEnemy {
-    constructor(def, x, y, g, opt = {}) {
-      this.def = def; this.type = def.id; this.isAlien = true;
-      this.frames = creatureFrames(def.spec);
-      this.w = this.frames[0].width; this.h = this.frames[0].height;
-      this.x = x; this.y = y; this.baseY = y; this.tier = opt.tier || 1;
-      this.t = 0; this.flash = 0; this.dead = false; this.isBoss = false; this.invuln = false;
-      const cs = g.cstage;
-      this.maxhp = this.hp = Math.max(1, def.hp * (cs ? cs.hp : 1) * TIER_HP[this.tier] * g.diff.hp);
-      this.move = opt.move || def.move;
-      this.atk = opt.atk === 'none' ? [] : opt.atk ? [opt.atk] : (def.attack || []);
-      this.phase = opt.phase ?? rand(0, 6.28);
-      this.mode = 'in'; this.hoverX = rand(W - 100, W - 60); this.stay = this.move.stay || rand(6, 10);
-      this.aimT = 0; this.dir = Math.random() < 0.5 ? 1 : -1; this.orbA = 0; this.orbT = 0;
-      this.atkT = this.atk.map((a) => rand(0.5, 0.5 + a.rate));
-      this.st = { spin: rand(0, 6), sw: rand(0, 6) };
-      this.talkT = rand(1.5, TALK_MAX); this.say = null; this.sayT = 0;
-    }
-    update(dt, g) {
-      this.t += dt; this.flash = Math.max(0, this.flash - dt);
-      tickTalk(this, dt, g);
-      const mv = this.move, sp = this.def.speed * g.speedMul, p = g.player, cy0 = this.y + this.h / 2;
-      let shoot = true;
-      switch (mv.type) {
-        case 'sine': this.x -= sp * dt; this.y = this.baseY + Math.sin(this.t * mv.freq + this.phase) * mv.amp; break;
-        case 'zigzag': this.x -= sp * dt; this.y = this.baseY + triWave(this.t * mv.freq + this.phase) * mv.amp; break;
-        case 'swoop':
-          this.x -= sp * dt;
-          if (!g.dying && this.x > p.x + 70) this.y += clamp(p.y + p.h / 2 - cy0, -1, 1) * 34 * dt;
-          break;
-        case 'bounce':
-          this.x -= sp * dt; this.y += this.dir * (mv.vy || 40) * dt;
-          if (this.y < HUD_H + 4) this.dir = 1; else if (this.y > H - this.h - 16) this.dir = -1;
-          break;
-        case 'hover':
-          if (this.mode === 'in') { this.x -= sp * 1.8 * dt; shoot = false; if (this.x <= this.hoverX) this.mode = 'hover'; }
-          else if (this.mode === 'hover') {
-            this.y = this.baseY + Math.sin(this.t * 1.3) * (mv.amp || 12);
-            this.stay -= dt; if (this.stay <= 0) this.mode = 'out';
-          } else { this.x -= sp * 2 * dt; shoot = false; }
-          break;
-        case 'strafe':
-          if (this.mode === 'in') { this.x -= sp * 1.8 * dt; shoot = false; if (this.x <= W - this.w - 6) this.mode = 'hover'; }
-          else if (this.mode === 'hover') {
-            this.y = (H + HUD_H) / 2 - this.h / 2 + Math.sin(this.t * 0.9 + this.phase) * ((H - HUD_H - 44) / 2);
-            this.stay -= dt; if (this.stay <= 0) this.mode = 'out';
-          } else { this.x -= sp * 2 * dt; shoot = false; }
-          break;
-        case 'orbit':
-          if (this.mode === 'in') {
-            this.x -= sp * 1.4 * dt; shoot = false;
-            if (this.x <= W - 56) {
-              this.mode = 'orbit'; this.ox = this.x; this.orbA = this.phase; this.orbT = 0;
-              this.oy = clamp(this.baseY, HUD_H + mv.radius + 6, H - mv.radius - this.h - 18);
-            }
-          } else if (this.mode === 'orbit') {
-            this.orbT += dt; this.orbA += mv.omega * dt; this.ox -= sp * 0.2 * dt;
-            this.x = this.ox + Math.cos(this.orbA) * mv.radius; this.y = this.oy + Math.sin(this.orbA) * mv.radius;
-            if (this.orbT >= (mv.loops * 6.283) / mv.omega) this.mode = 'out';
-          } else { this.x -= sp * 2 * dt; shoot = false; }
-          break;
-        case 'charge':
-          if (this.mode === 'in') { this.x -= sp * 2 * dt; if (this.x <= W - 70) { this.mode = 'aim'; this.aimT = 1.1; } }
-          else if (this.mode === 'aim') {
-            this.aimT -= dt;
-            if (this.aimT > 0.45) this.y += (p.y + p.h / 2 - this.h / 2 - this.y) * Math.min(1, dt * 4);
-            if (this.aimT <= 0) this.mode = 'dash';
-          } else this.x -= 250 * g.diff.bul * dt;
-          shoot = false;
-          break;
-        default: this.x -= sp * dt;                              // straight
-      }
-      if (shoot && this.x < W - 6 && this.x > 4) {
-        const cs = g.cstage, trate = [1, 1, 1.3, 1.6][this.tier];
-        for (let i = 0; i < this.atk.length; i++) {
-          this.atkT[i] -= dt;
-          if (this.atkT[i] <= 0) {
-            const a = this.atk[i];
-            this.atkT[i] = a.rate / (g.diff.rate * (cs ? cs.threat : 1) * trate);
-            g.fireAttack(a, this, this.st);
-          }
-        }
-      }
-      this.y = clamp(this.y, HUD_H + 2, H - this.h - 14);
-      if (this.x < -this.w - 14) this.dead = true;
-    }
-    draw(g) {
-      const f = Math.floor(g.t * (this.def.big ? 3 : 6) + this.phase) % 2;
-      const img = variant(this.frames[f], this.tier, this.flash > 0);
-      const x = Math.round(this.x), y = Math.round(this.y);
-      if (this.move.type === 'charge' && this.mode === 'aim' && this.aimT < 0.6) {      // telegraph
-        ctx.fillStyle = 'rgba(255,60,60,0.7)';
-        const ly = Math.round(this.y + this.h / 2);
-        for (let lx = 0; lx < x; lx += 4) ctx.fillRect(lx, ly, 2, 1);
-      }
-      ctx.drawImage(img, x, y);
-      if ((this.tier >= 2 || this.def.big) && this.hp < this.maxhp) {
-        ctx.fillStyle = '#000'; ctx.fillRect(x, y - 4, this.w, 3);
-        ctx.fillStyle = this.tier >= 3 ? '#ff4b4b' : this.tier === 2 ? GOLD : '#6dff9a';
-        ctx.fillRect(x + 1, y - 3, Math.max(0, Math.round((this.w - 2) * this.hp / this.maxhp)), 1);
-      }
-    }
-    drawSpeech() {
-      if (!this.say || this.sayT <= 0 || this.dead) return;
-      drawBubble(this.say, this.sayT, this.x + this.w / 2, this.y, this.h);
-    }
-  }
-
-  class AlienBoss {
-    constructor(def, g, opt = {}) {
-      this.def = def; this.id = def.id; this.type = def.id; this.name = def.name;
-      this.isBoss = true; this.isAlienBoss = true;
-      this.frames = creatureFrames(def.spec);
-      this.w = this.frames[0].width; this.h = this.frames[0].height;
-      this.x = W + 4; this.y = H / 2 - this.h / 2; this.tier = 1; this.t = 0; this.flash = 0;
-      this.dead = false; this.dying = false; this.invuln = true; this.phase = 1; this.pi = -1; this.trans = 0;
-      const cs = g.cstage;
-      this.maxhp = this.hp = def.hp * (opt.hpMul || 1) * (cs ? cs.hp : 1) * g.diff.hp;
-      this.say = def.intro || ''; this.sayT = this.say ? 2.8 : 0;
-    }
-    update(dt, g) {
-      this.t += dt; this.flash = Math.max(0, this.flash - dt);
-      if (this.sayT > 0) this.sayT -= dt;
-      if (this.dying) return;
-      const targetX = W - this.w - 10;
-      if (this.invuln && this.pi < 0) {                          // sliding in
-        this.x -= 40 * dt;
-        if (this.x <= targetX) { this.x = targetX; this.invuln = false; }
-        return;
-      }
-      const phs = this.def.phases, ratio = this.hp / this.maxhp;
-      let idx = 0;
-      for (let i = 0; i < phs.length; i++) if (ratio <= phs[i].at) idx = i;
-      if (idx !== this.pi) {
-        if (this.pi >= 0) {                                      // new phase: brief pause, wipe the bullets
-          g.ebullets.length = 0; this.invuln = true; this.trans = 1.1; g.shake = Math.max(g.shake, 6);
-          g.popups.push(new Popup(W / 2, 70, 'PHASE ' + (idx + 1), '#ff9d3c', 2, false, 1.2));
-          g.sfx.boom(false);
-        }
-        this.pi = idx; this.phase = idx + 1; this.ph = phs[idx];
-        this.atkT = this.ph.attacks.map((a) => rand(0.6, 0.6 + a.rate)); this.st = { spin: 0, sw: 0 };
-      }
-      if (this.trans > 0) { this.trans -= dt; if (this.trans <= 0) this.invuln = false; return; }
-      const m = this.def.move, ms = m.speed * this.ph.mspeed, mid = H / 2 - this.h / 2;
-      if (m.type === 'sway') this.y = mid + Math.sin(this.t * ms) * m.amp;
-      else if (m.type === 'patrol') { this.y = mid + Math.sin(this.t * ms * 1.3) * m.amp; this.x = targetX - (0.5 + 0.5 * Math.sin(this.t * ms * 0.6)) * 40; }
-      else if (m.type === 'figure8') { this.x = targetX - 22 - 22 * Math.sin(this.t * ms * 0.7); this.y = mid + Math.sin(this.t * ms * 1.4) * m.amp * 0.8; }
-      else this.y = mid + Math.sin(this.t * ms * 0.8) * 12;
-      this.y = clamp(this.y, HUD_H + 2, H - this.h - 10);
-      const cs = g.cstage;
-      for (let i = 0; i < this.ph.attacks.length; i++) {
-        this.atkT[i] -= dt;
-        if (this.atkT[i] <= 0) {
-          const a = this.ph.attacks[i];
-          this.atkT[i] = a.rate / (g.diff.rate * (cs ? cs.threat : 1));
-          g.fireAttack(a, this, this.st);
-        }
-      }
-    }
-    draw(g) {
-      const base = this.frames[Math.floor(g.t * 3) % 2];
-      base._v = base._v || {};
-      if (!base._v.o) base._v.o = tint(base, '#a8bde8');                  // light rim so dark bosses read on dark skies
-      if (!base._v.h) base._v.h = tintOver(base, '#ffffff', 0.5);
-      const img = this.flash > 0 ? base._v.h : base;
-      let x = Math.round(this.x), y = Math.round(this.y);
-      if (this.dying) { x += randi(-2, 2); y += randi(-2, 2); }
-      if (this.invuln && Math.floor(g.t * 10) % 2 === 0) ctx.globalAlpha = 0.7;
-      const o = base._v.o;
-      ctx.drawImage(o, x - 1, y); ctx.drawImage(o, x + 1, y); ctx.drawImage(o, x, y - 1); ctx.drawImage(o, x, y + 1);
-      ctx.drawImage(img, x, y);
-      ctx.globalAlpha = 1;
-    }
-    drawSpeech() {
-      if (!this.say || this.sayT <= 0 || this.dead) return;
-      drawBubble(this.say, this.sayT, this.x + this.w / 2, this.y, this.h);
-    }
-  }
-
-  /* ---------------------------------------------------------
      Game
   --------------------------------------------------------- */
   const WORDS = ['POW!', 'KABOOM!', 'BOOM!', 'CHA-CHING!', 'ZAP!', 'BZZT!', 'BOING!', 'KAPOW!'];
@@ -1982,17 +1578,15 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       const cycStage = cyc(null, 'stage', () => Math.min(5, this.save.bestStage));
       this.bDiff = new Button('', 66, 138, 94, 12, () => cycDiff(1), cycDiff);
       this.bStage = new Button('', 164, 138, 90, 12, () => cycStage(1), cycStage);
-      this.bDiff.y = 142; this.bStage.y = 142;
       this.menuBtns = [
-        new Button('STORY MODE', 90, 72, 140, 15, () => this.startStory(this.save.storyIdx | 0)),
-        new Button('ARCADE', 90, 89, 140, 15, () => this.startRun()),
-        new Button('HANGAR', 90, 106, 140, 15, () => { this.screen = 'hangar'; this.hSel = 0; this.hScroll = 0; this.sfx.select(); }),
-        new Button('HOW TO PLAY', 90, 123, 140, 15, () => { this.screen = 'howto'; this.sel = 0; this.sfx.select(); }),
+        new Button('START MISSION', 90, 74, 140, 18, () => this.startRun()),
+        new Button('HANGAR', 90, 95, 140, 18, () => { this.screen = 'hangar'; this.hSel = 0; this.hScroll = 0; this.sfx.select(); }),
+        new Button('HOW TO PLAY', 90, 116, 140, 18, () => { this.screen = 'howto'; this.sel = 0; this.sfx.select(); }),
         this.bDiff, this.bStage,
       ];
       this.howBtns = [new Button('BACK', 110, 156, 100, 14, () => this.backToMenu())];
       this.overBtns = [
-        new Button('RETRY', 100, 124, 120, 14, () => this.retry()),
+        new Button('RETRY', 100, 124, 120, 14, () => this.startRun()),
         new Button('HANGAR', 100, 140, 120, 14, () => { this.toMenu(); this.screen = 'hangar'; this.hSel = 0; this.hScroll = 0; }),
         new Button('MENU', 100, 156, 120, 14, () => this.toMenu()),
       ];
@@ -2041,12 +1635,10 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       this.shieldT = 0; this.magnetT = 0; this.dcT = 0; this.rapidT = 0; this.revived = false;
       this.weaponId = 'vulcan'; this.overT = 0; this.newBest = false;
       this.stageCoins0 = 0; this.stageGems0 = 0; this.fade = 0;
-      // custom (editor-made) stage state
-      this.cstage = null; this.cevents = []; this.cEv = 0; this.cT = 0; this.pendingBoss = null; this.won = false;
     }
 
     /* ---------------- run lifecycle ---------------- */
-    initRun() {                                  // shared by arcade, story and playtest runs
+    startRun() {
       this.sfx.init();
       this.computeStats();
       this.clearRun();
@@ -2056,85 +1648,8 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       this.weaponId = sv.weapons.includes(sv.weapon) ? sv.weapon : 'vulcan';
       this.power = st.startPower; this.bombs = st.bombs; this.shieldT = st.shield;
       this.state = 'playing';
-    }
-
-    startRun() {                                 // arcade mode (the original 5-stage game)
-      this.mode = 'arcade';
-      this.initRun();
-      this.beginStage(clamp(this.save.stage, 1, Math.min(5, this.save.bestStage)));
+      this.beginStage(clamp(sv.stage, 1, Math.min(5, sv.bestStage)));
       this.sfx.start();
-    }
-
-    /* ---------------- story mode + playtest (custom stages) ---------------- */
-    retry() {
-      if (this.mode === 'story') this.startStory(this.storyIdx);
-      else if (this.mode === 'test') this.startTest(this.testStage, null, this.testOpts);
-      else this.startRun();
-    }
-
-    startStory(idx) {
-      const list = this.storyList = OCT.flatten(loadCampaign());
-      if (!list.length) { this.toast = { txt: 'NO STORY YET - BUILD ONE IN EDITOR.HTML', until: this.t + 3.5 }; this.sfx.select(); return; }
-      this.mode = 'story';
-      this.storyIdx = clamp(idx | 0, 0, list.length - 1);
-      this.initRun();
-      this.beginCustom(list[this.storyIdx].stage, list[this.storyIdx].title || ('STAGE ' + (this.storyIdx + 1)));
-      this.sfx.start();
-    }
-
-    startTest(stage, roster, opts) {              // used by the editor's PLAY button
-      if (roster) OCT.applyRoster(roster);
-      opts = this.testOpts = opts || {};
-      this.mode = 'test'; this.testStage = stage;
-      this.initRun();
-      if (opts.power) this.power = clamp(opts.power, 1, 5);
-      if (opts.bombs) this.bombs = Math.min(this.st.maxBombs, opts.bombs);
-      this.god = !!opts.god;
-      this.beginCustom(stage, 'PLAYTEST');
-      if (opts.from > 0) {                         // start partway through the stage
-        this.cT = opts.from; this.stageT = opts.from;
-        while (this.cEv < this.cevents.length && (this.cevents[this.cEv].t || 0) < opts.from) this.cEv++;
-        this.banner = null;
-      }
-      this.sfx.start();
-    }
-
-    beginCustom(stage, label) {
-      this.cstage = Object.assign({ name: 'STAGE', bg: 'day', len: 60, threat: 1, hp: 1, bul: 1, events: [] }, stage);
-      this.cevents = (this.cstage.events || []).slice().sort((a, b) => (a.t || 0) - (b.t || 0));
-      this.cEv = 0; this.cT = 0; this.pendingBoss = null;
-      this.stage = this.mode === 'story' ? this.storyIdx + 1 : 1; this.stageIdx = 0; this.loop = 0;
-      this.cfg = { name: String(this.cstage.name).toUpperCase(), bg: this.cstage.bg, len: this.cstage.len };
-      this.bg.setMode(PAL[this.cstage.bg] ? this.cstage.bg : 'day');
-      this.enemies = []; this.ebullets = []; this.pickups = [];
-      this.phase = 'wave'; this.stageT = 0; this.waveT = 0; this.boss = null;
-      this.stageCoins0 = this.runCoins; this.stageGems0 = this.runGems;
-      this.banner = { title: String(label || '').toUpperCase(), sub: this.cfg.name, t: 2.6 };
-      this.fade = 0.5; this.dirty = true;
-    }
-
-    customClear() {
-      this.phase = 'clear'; this.clearT = 4;
-      this.sfx.clear(); this.flush();
-      const p = this.player;
-      if (p.hp < p.maxhp) p.hp++;
-      this.bombs = Math.min(this.st.maxBombs, this.bombs + 1);
-      this.shieldT = Math.max(this.shieldT, 3);
-    }
-
-    customNext() {                               // the clear screen has finished
-      if (this.mode === 'story') {
-        const nxt = this.storyIdx + 1;
-        if (nxt < this.storyList.length) {
-          this.storyIdx = nxt; this.save.storyIdx = nxt; this.flush();
-          this.beginCustom(this.storyList[nxt].stage, this.storyList[nxt].title || ('STAGE ' + (nxt + 1)));
-          return;
-        }
-        this.save.storyIdx = 0; this.flush();
-      }
-      this.won = true;
-      if (this.mode === 'test' && window.parent !== window) window.parent.postMessage({ type: 'oct-playtest-end', result: 'clear' }, '*');
-      this.gameOver();
     }
 
     beginStage(n) {
@@ -2151,8 +1666,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
 
     gameOver() {
       this.state = 'over'; this.overT = 0; this.sel = 0;
-      if (this.mode === 'test' && !this.won && window.parent !== window) window.parent.postMessage({ type: 'oct-playtest-end', result: 'dead' }, '*');
-      this.newBest = this.mode === 'arcade' && this.score > this.save.hi;
+      this.newBest = this.score > this.save.hi;
       if (this.newBest) this.save.hi = Math.floor(this.score);
       this.flush();
       this.sfx.over();
@@ -2273,7 +1787,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
 
     /* ---------------- helpers used by entities ---------------- */
     magnetR() { return this.st.magnet; }
-    bs(v) { return v * this.diff.bul * (this.cstage ? this.cstage.bul : 1) * (1 + 0.05 * this.stageIdx + 0.1 * this.loop); }
+    bs(v) { return v * this.diff.bul * (1 + 0.05 * this.stageIdx + 0.1 * this.loop); }
     eb(x, y, ang, sp, size = 3, col = '#ff4b2b') {
       if (this.ebullets.length > 280) return;
       const v = this.bs(sp);
@@ -2290,105 +1804,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
     pb(o) { this.bullets.push(new Bullet(Object.assign({ friendly: true }, o))); }
     spawnChild(parent, type) {
       this.enemies.push(new Enemy(type, parent.x, parent.y + rand(2, Math.max(3, parent.h - 9)), this, { amp: rand(8, 16) }));
-    }
-
-    /* ---------------- attack patterns (aliens + alien bosses) ----------------
-       a  = attack data from content.js, e.g. { type:'fan', n:5, spread:0.2, speed:90, rate:1.5 }
-       s  = the shooter (x, y, w, h);  st = per-shooter scratch { spin, sw } for spirals */
-    fireAttack(a, s, st) {
-      const ox = s.x + 2, oy = s.y + s.h / 2, sp = a.speed || 90, sz = a.size || 3, col = a.color || '#ff4b2b';
-      switch (a.type) {
-        case 'aimed': this.eb(ox, oy, this.aim(ox, oy), sp, sz, col); break;
-        case 'burst':
-        case 'fan': this.fan(ox, oy, a.n || 3, a.spread || 0.18, sp, sz, col); break;
-        case 'ring': st.spin += a.twist || 0; this.ring(ox, oy, a.n || 10, sp, st.spin, sz, col); break;
-        case 'spiral': {
-          const arms = a.arms || 1;
-          st.spin += a.step || 0.3;
-          for (let k = 0; k < arms; k++) this.eb(ox, oy, st.spin + (k * Math.PI * 2) / arms, sp, sz, col);
-          break;
-        }
-        case 'sweep': {
-          st.sw += a.step || 0.12;
-          const n = a.n || 1, base = Math.PI + Math.sin(st.sw) * (a.arc || 0.8);
-          for (let i = 0; i < n; i++) this.eb(ox, oy, base + (i - (n - 1) / 2) * 0.16, sp, sz, col);
-          break;
-        }
-        case 'rain':
-          for (let i = 0; i < (a.n || 2); i++) this.eb(rand(W * 0.3, W - 8), HUD_H + 2, Math.PI / 2 + rand(-0.12, 0.12), sp, sz, col);
-          break;
-        case 'line': {
-          const n = a.n || 4, base = this.aim(ox, oy);
-          for (let i = 0; i < n; i++) this.eb(ox, oy + (i - (n - 1) / 2) * 7, base, sp, sz, col);
-          break;
-        }
-        case 'wall': {                                            // vertical wall of shots with a gap near the player
-          const rows = a.rows || 10, gap = a.gap || 1, top = HUD_H + 6, bot = H - 16, step = (bot - top) / (rows - 1);
-          const pr = Math.round((this.player.y + this.player.h / 2 - top) / step);
-          const gi = clamp(pr + randi(-2, 2), 0, rows - 1);
-          for (let r = 0; r < rows; r++) if (Math.abs(r - gi) >= gap) this.eb(ox, top + r * step, Math.PI, sp, sz, col);
-          break;
-        }
-        case 'curtain': {                                         // falling curtain of shots with a gap near the player
-          const cols = a.cols || 11, gap = a.gap || 1, x0 = W * 0.18, x1 = W - 8, step = (x1 - x0) / (cols - 1);
-          const pc = Math.round((this.player.x + this.player.w / 2 - x0) / step);
-          const gi = clamp(pc + randi(-2, 2), 0, cols - 1);
-          for (let c = 0; c < cols; c++) if (Math.abs(c - gi) >= gap) this.eb(x0 + c * step, HUD_H + 2, Math.PI / 2, sp, sz, col);
-          break;
-        }
-        case 'mines': this.eb(ox, oy, Math.PI + rand(-0.5, 0.5), sp, sz, '#ff7a1a'); break;
-        case 'summon': {
-          const def = OCT.ENEMY_BY[a.enemy];
-          if (!def || this.enemies.length >= 22) break;
-          for (let i = 0; i < (a.n || 1); i++) {
-            this.enemies.push(new AlienEnemy(def, s.x, clamp(s.y + rand(0, Math.max(1, s.h - 8)), HUD_H + 4, H - 40), this, { tier: 1 }));
-          }
-          break;
-        }
-        default: break;
-      }
-    }
-
-    /* ---------------- custom stages: formations + timeline ---------------- */
-    spawnFormation(ev) {
-      const def = OCT.ENEMY_BY[ev.enemy];
-      if (!def || this.enemies.length >= 40) return;
-      const eh = creatureFrames(def.spec)[0].height;
-      const n = clamp(ev.n | 0 || 1, 1, 24), tier = clamp(ev.tier | 0 || 1, 1, 3);
-      for (const p of OCT.formation(ev.form || 'line', n, ev.y, eh, Math.random)) {
-        this.enemies.push(new AlienEnemy(def, W + 8 + p.dx, p.y, this, { tier, phase: p.phase, atk: ev.silent ? 'none' : undefined }));
-      }
-    }
-
-    fireEvent(ev) {
-      switch (ev.kind) {
-        case 'wave': this.spawnFormation(ev); break;
-        case 'boss': {
-          const def = OCT.BOSS_BY[ev.boss];
-          if (!def) break;
-          this.pendingBoss = { def, hpMul: ev.hpMul || 1 };
-          this.phase = 'warning'; this.warnT = 3.4; this.sfx.warning();
-          break;
-        }
-        case 'pickup': {
-          const cap = POWERUPS[ev.cap] ? ev.cap : 'P';
-          this.pickups.push(new Pickup(W + 8, HUD_H + 10 + clamp(ev.y == null ? 0.5 : ev.y, 0, 1) * (H - HUD_H - 40), 0, 0, 'cap', cap));
-          break;
-        }
-        case 'text': this.banner = { title: String(ev.title || ''), sub: String(ev.sub || ''), t: ev.dur || 2.6 }; break;
-        case 'bg': if (PAL[ev.bg]) { this.bg.setMode(ev.bg); this.fade = 0.4; } break;
-        default: break;
-      }
-    }
-
-    runTimeline(dt) {
-      this.cT += dt; this.stageT = this.cT;
-      while (this.cEv < this.cevents.length && (this.cevents[this.cEv].t || 0) <= this.cT) {
-        this.fireEvent(this.cevents[this.cEv++]);
-        if (this.phase !== 'wave') return;                         // a boss event pauses the timeline
-      }
-      const idle = !this.enemies.some((e) => !e.dead);
-      if (this.cEv >= this.cevents.length && this.cT >= (this.cstage.len || 0) && idle) this.customClear();
     }
     nearestEnemy(x, y) {
       let best = null, bd = 1e9;
@@ -2536,13 +1951,8 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       for (let i = 0; i < 28; i++) {                         // coin shower
         this.pickups.push(new Pickup(rand(20, W - 10), HUD_H + rand(0, 20), rand(-10, 10), rand(0, 40), Math.random() < 0.2 ? 'note' : 'coin'));
       }
-      if (this.cstage) {
-        this.boss = null;
-        if (this.cEv < this.cevents.length) this.phase = 'wave';   // the stage has more events after the boss: keep going
-      } else {
-        const nxt = Math.min(5, this.stage + 1);
-        if (nxt > this.save.bestStage) this.save.bestStage = nxt;
-      }
+      const nxt = Math.min(5, this.stage + 1);
+      if (nxt > this.save.bestStage) this.save.bestStage = nxt;
       this.flush();
     }
 
@@ -2585,7 +1995,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
 
     hurtPlayer() {
       const p = this.player;
-      if (p.inv > 0 || this.dying > 0 || p.dashT > 0 || this.god) return;
+      if (p.inv > 0 || this.dying > 0 || p.dashT > 0) return;
       const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
       if (this.shieldT > 0) {
         this.shieldT = 0; p.inv = 0.8; this.shake = 3;
@@ -2700,7 +2110,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       // ---- playing ----
       if (this.hitstop > 0) { this.hitstop -= dt; return; }
       this.time += dt;
-      this.speedMul = this.cstage ? 1 : Math.min(1.9, 1 + 0.07 * Math.min(this.stageIdx, 4) + 0.12 * this.loop + 0.002 * this.stageT);
+      this.speedMul = Math.min(1.9, 1 + 0.07 * Math.min(this.stageIdx, 4) + 0.12 * this.loop + 0.002 * this.stageT);
       this.shieldT = Math.max(0, this.shieldT - dt); this.magnetT = Math.max(0, this.magnetT - dt);
       this.dcT = Math.max(0, this.dcT - dt); this.rapidT = Math.max(0, this.rapidT - dt);
       this.bombCd = Math.max(0, this.bombCd - dt);
@@ -2718,16 +2128,13 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
 
       // stage flow
       if (this.phase === 'wave') {
-        if (this.cstage) this.runTimeline(dt);
-        else {
-          this.stageT += dt;
-          this.spawnWaves(dt);
-          if (this.stageT >= this.cfg.len) { this.phase = 'warning'; this.warnT = 3.4; this.sfx.warning(); }
-        }
+        this.stageT += dt;
+        this.spawnWaves(dt);
+        if (this.stageT >= this.cfg.len) { this.phase = 'warning'; this.warnT = 3.4; this.sfx.warning(); }
       } else if (this.phase === 'warning') {
         this.warnT -= dt;
         if (this.warnT <= 0) {
-          this.boss = this.cstage ? new AlienBoss(this.pendingBoss.def, this, { hpMul: this.pendingBoss.hpMul }) : new Boss(this.cfg.boss, this);
+          this.boss = new Boss(this.cfg.boss, this);
           this.enemies.push(this.boss);
           this.phase = 'boss';
         }
@@ -2742,7 +2149,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
         if (this.bossDeathT <= 0) this.finishBoss();
       } else if (this.phase === 'clear') {
         this.clearT -= dt;
-        if (this.clearT <= 0) { if (this.cstage) this.customNext(); else this.beginStage(this.stage + 1); }
+        if (this.clearT <= 0) this.beginStage(this.stage + 1);
       }
 
       this.bullets.forEach((b) => b.update(dt, this));
@@ -2794,7 +2201,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       const bx = p.box;
       for (const e of this.enemies) {
         if (e.dead || e.dying || e.invuln || p.dashT > 0 || !overlap(bx, e)) continue;
-        if (!e.isBoss && (e.type === 'drone' || e.type === 'jet' || e.type === 'interceptor' || (e.isAlien && !e.def.big))) this.killEnemy(e);
+        if (!e.isBoss && (e.type === 'drone' || e.type === 'jet' || e.type === 'interceptor')) this.killEnemy(e);
         else if (!e.isBoss) { e.hp -= 5; e.flash = 0.1; if (e.hp <= 0) this.killEnemy(e); }
         this.hurtPlayer();
       }
@@ -2933,7 +2340,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
         text(b.name, W / 2, 17, '#ffffff', 1, '#000', 'center');
         ctx.fillStyle = '#000'; ctx.fillRect(70, 24, 180, 6);
         ctx.fillStyle = '#5a1020'; ctx.fillRect(71, 25, 178, 4);
-        ctx.fillStyle = b.phase >= 3 ? '#ff4b4b' : b.phase === 2 ? '#ffb02e' : '#6dff9a';
+        ctx.fillStyle = b.phase === 3 ? '#ff4b4b' : b.phase === 2 ? '#ffb02e' : '#6dff9a';
         ctx.fillRect(71, 25, Math.max(0, Math.round(178 * b.hp / b.maxhp)), 4);
       }
 
@@ -2959,8 +2366,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       if (this.banner && this.state === 'playing') {
         const k = this.banner.t;
         if (k > 0.3 || Math.floor(k * 16) % 2) {
-          const long = this.banner.title.length > 12;
-          text(this.banner.title, W / 2, long ? 66 : 60, GOLD, long ? 2 : 4, '#b8321a', 'center');
+          text(this.banner.title, W / 2, 60, GOLD, 4, '#b8321a', 'center');
           text(this.banner.sub, W / 2, 86, '#ffffff', 1, '#000', 'center');
         }
       }
@@ -2970,16 +2376,12 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
         ctx.fillStyle = on ? '#ff3b3b' : '#7a1010';
         ctx.fillRect(0, 56, W, 3); ctx.fillRect(0, 108, W, 3);
         if (on) text('WARNING!', W / 2, 70, '#ffffff', 4, '#c01010', 'center');
-        const bname = this.cstage ? (this.pendingBoss ? this.pendingBoss.def.name : 'BOSS') : BOSSES[this.cfg.boss].name;
-        text(bname + ' APPROACHES', W / 2, 96, '#ffd0d0', 1, '#000', 'center');
+        text(BOSSES[this.cfg.boss].name + ' APPROACHES', W / 2, 96, '#ffd0d0', 1, '#000', 'center');
       }
       if (this.phase === 'clear' && this.state === 'playing') {
         text('STAGE CLEAR!', W / 2, 52, '#6dff9a', 3, '#0a4a22', 'center');
         text('+' + (this.runCoins - this.stageCoins0) + ' COINS   +' + (this.runGems - this.stageGems0) + ' GEMS', W / 2, 82, '#ffffff', 1, '#000', 'center');
-        if (this.cstage) {
-          const nx = this.mode === 'story' ? this.storyList[this.storyIdx + 1] : null;
-          text(nx ? 'NEXT: ' + String(nx.title || nx.stage.name).toUpperCase() : (this.mode === 'story' ? 'THE END' : 'WELL DONE'), W / 2, 94, nx ? '#9fb0ff' : GOLD, 1, '#000', 'center');
-        } else if (this.stage % 5 === 0) text('VICTORY! ENDLESS LOOPS NEXT', W / 2, 94, GOLD, 1, '#000', 'center');
+        if (this.stage % 5 === 0) text('VICTORY! ENDLESS LOOPS NEXT', W / 2, 94, GOLD, 1, '#000', 'center');
         else text('NEXT: ' + STAGES[this.stage % 5].name, W / 2, 94, '#9fb0ff', 1, '#000', 'center');
       }
     }
@@ -2987,8 +2389,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
     drawGameOver() {
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(0, 0, W, H);
       panel(70, 8, 180, 164);
-      if (this.won) text(this.mode === 'story' ? 'THE END' : 'CLEARED!', W / 2, 16, '#6dff9a', 4, '#0a4a22', 'center');
-      else text('GAME OVER', W / 2, 16, '#ff4b4b', 4, '#4a0a0a', 'center');
+      text('GAME OVER', W / 2, 16, '#ff4b4b', 4, '#4a0a0a', 'center');
       text('STAGE ' + this.stage + ' - ' + this.cfg.name, W / 2, 42, '#9fb0ff', 1, '#000', 'center');
       text('SCORE: ' + pad(this.score), W / 2, 54, '#ffffff', 2, '#333', 'center');
       drawCoinIcon(110, 71);
@@ -3041,8 +2442,7 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
       this.bStage.label = 'STAGE ' + this.save.stage;
       this.menuBtns.forEach((b, i) => b.draw(i === this.sel, this.t));
 
-      if (this.toast && this.t < this.toast.until) text(this.toast.txt, W / 2, 158, '#ff9d9d', 1, '#000', 'center');
-      else if (Math.floor(this.t * 2.4) % 2 === 0) text('PRESS START', W / 2, 156, GOLD, 2, '#000', 'center');
+      if (Math.floor(this.t * 2.4) % 2 === 0) text('PRESS START', W / 2, 156, GOLD, 2, '#000', 'center');
       text('HI ' + pad(this.save.hi), 70, 168, '#9fb0ff', 1);
       drawCoinIcon(142, 166); text(fmt(this.save.coins), 152, 168, '#ffe066', 1);
       drawGemIcon(206, 167); text(fmt(this.save.gems), 215, 168, '#8fe8ff', 1);
@@ -3175,29 +2575,6 @@ const MAX_BUBBLES = 3;     // most speech bubbles on screen at once
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('wheel', (e) => { e.preventDefault(); game.wheel(e.deltaY > 0 ? 1 : -1); }, { passive: false });
   window.addEventListener('beforeunload', () => game.flush());
-
-  /* ---- editor playtest: editor.html embeds this page and sends it a stage ---- */
-  window.addEventListener('message', (e) => {
-    const d = e.data;
-    if (e.source !== window.parent || !d || d.type !== 'oct-playtest' || !d.stage) return;
-    game.startTest(d.stage, d.roster, d.opts);
-  });
-  if (window.parent !== window) window.parent.postMessage({ type: 'oct-ready' }, '*');
-
-  /* ---- TESTING CHEAT: open the browser console (F12) and type  giveMoney()  ----
-     giveMoney()          -> +100000 coins, +1000 gems
-     giveMoney(5000, 50)  -> +5000 coins, +50 gems
-     Delete this block (or set ENABLE_CHEATS to false) when you ship the game. */
-  const ENABLE_CHEATS = true;
-  if (ENABLE_CHEATS) {
-    window.game = game;                                   // handy for poking around in the console
-    window.giveMoney = (coins = 100000, gems = 1000) => {
-      game.save.coins += coins;
-      game.save.gems += gems;
-      game.flush();
-      console.log(`Added ${coins} coins and ${gems} gems. You now have ${game.save.coins} coins and ${game.save.gems} gems.`);
-    };
-  }
 
   let last = performance.now();
   function frame(now) {
